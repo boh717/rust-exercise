@@ -12,6 +12,8 @@ Clients are printed to `stdout`, while errors are printed to `stderr`.
 
 ### Assumptions
 
+#### Operation constraints
+
 The withdraw operation states the following:
 
 > If a client does not have sufficient available funds the withdrawal should fail and the total amount of funds should not change
@@ -45,6 +47,14 @@ For disputes, I chose to prevent negative balances by checking available funds. 
 For resolve operations, the check ensures we only release funds that are actually being held in dispute.
 
 Chargebacks require no additional validation check because they operate on amounts that are already disputed and held, and apply only to valid disputed transactions.
+
+#### Creation of new clients
+
+The PDF states:
+
+> There are multiple clients. Transactions reference clients. If a client doesn't exist create a new record
+
+This works well for deposits, but for all other operations, the client should exist. For example, if a withdrawal is requested for a client that doesn't exist (CSV might be malformed or the client was deleted), I would create and output an empty client at the end (with available, total and held set to 0). It doesn't look meaningful to have it.
 
 ### Design choices
 
