@@ -75,7 +75,7 @@ where
         tx_id: TxId,
         client_id: ClientId,
     ) -> anyhow::Result<Client> {
-        let mut client = self.get_or_create_client(&client_id)?;
+        let mut client = self.client_repository.get_client(&client_id)?;
 
         match tx_type {
             TxType::Dispute => {
@@ -264,5 +264,25 @@ mod tests {
         assert_eq!(client.total.get(), 0.0);
         assert_eq!(client.held.get(), 0.0);
         assert_eq!(client.status, ClientStatus::Locked);
+    }
+
+    #[test]
+    fn test_process_dispute_with_nonexistent_client() {
+        let client_id = ClientId::try_from("999".to_string()).unwrap();
+        let tx_id = TxId::try_from("100".to_string()).unwrap();
+
+        let client_repo = TestClientRepository::new();
+        let transaction_repo = TestTransactionRepository {};
+        let mut service = TransactionService::new(client_repo, transaction_repo);
+
+        let dispute_record = InputRecord {
+            client: client_id.clone(),
+            tx: tx_id,
+            tx_type: TxType::Dispute,
+            amount: None,
+        };
+
+        let err = service.process_transaction(&dispute_record).unwrap_err();
+        assert!(err.is::<ClientError>());
     }
 }
