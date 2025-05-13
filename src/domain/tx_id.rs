@@ -1,3 +1,4 @@
+use fmt::Display;
 use serde::Deserialize;
 use std::fmt;
 
@@ -5,7 +6,7 @@ use std::fmt;
 #[serde(try_from = "String")]
 pub struct TxId(u32);
 
-impl fmt::Display for TxId {
+impl Display for TxId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
