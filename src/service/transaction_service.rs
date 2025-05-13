@@ -50,11 +50,17 @@ where
     }
 
     fn process_new_transaction(&mut self, transaction: Transaction) -> anyhow::Result<Client> {
-        let mut client = self.get_or_create_client(&transaction.client_id)?;
-
-        match transaction.tx_type {
-            TxType::Deposit => client.deposit(transaction.amount)?,
-            TxType::Withdrawal => client.withdraw(transaction.amount)?,
+        let client = match transaction.tx_type {
+            TxType::Deposit => {
+                let mut client = self.get_or_create_client(&transaction.client_id)?;
+                client.deposit(transaction.amount)?;
+                client
+            }
+            TxType::Withdrawal => {
+                let mut client = self.client_repository.get_client(&transaction.client_id)?;
+                client.withdraw(transaction.amount)?;
+                client
+            }
             _ => anyhow::bail!(
                 "Invalid transaction type for new transaction: {:?}",
                 transaction
@@ -168,7 +174,7 @@ mod tests {
         let mut service = TransactionService::new(client_repo, transaction_repo);
 
         let input_record = InputRecord {
-            client: client_id.clone(),
+            client: client_id,
             tx: tx_id,
             tx_type: TxType::Withdrawal,
             amount: Some(withdrawal_amount),
@@ -184,6 +190,27 @@ mod tests {
     }
 
     #[test]
+    fn test_process_withdrawal_transaction_without_client() {
+        let client_id = ClientId::try_from("1".to_string()).unwrap();
+        let tx_id = TxId::try_from("100".to_string()).unwrap();
+        let withdrawal_amount = 5.0;
+
+        let client_repo = TestClientRepository::new();
+        let transaction_repo = TestTransactionRepository {};
+        let mut service = TransactionService::new(client_repo, transaction_repo);
+
+        let input_record = InputRecord {
+            client: client_id,
+            tx: tx_id,
+            tx_type: TxType::Withdrawal,
+            amount: Some(withdrawal_amount),
+        };
+
+        let err = service.process_transaction(&input_record).unwrap_err();
+        assert!(err.is::<ClientError>());
+    }
+
+    #[test]
     fn test_process_dispute_transaction() {
         let client_id = ClientId::try_from("1".to_string()).unwrap();
         let tx_id = TxId::try_from("100".to_string()).unwrap();
@@ -193,8 +220,8 @@ mod tests {
         initial_client.deposit(amount).unwrap();
 
         let original_tx = Transaction {
-            id: tx_id.clone(),
-            client_id: client_id.clone(),
+            id: tx_id,
+            client_id: client_id,
             tx_type: TxType::Deposit,
             amount: amount,
             status: TransactionStatus::Confirmed,
@@ -209,8 +236,8 @@ mod tests {
         );
 
         let dispute_record = InputRecord {
-            client: client_id.clone(),
-            tx: tx_id.clone(),
+            client: client_id,
+            tx: tx_id,
             tx_type: TxType::Dispute,
             amount: None,
         };
