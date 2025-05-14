@@ -1,5 +1,4 @@
 use serde::Deserialize;
-use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(try_from = "String")]
@@ -11,11 +10,11 @@ pub enum TxType {
     Chargeback,
 }
 
-impl FromStr for TxType {
-    type Err = anyhow::Error;
+impl TryFrom<String> for TxType {
+    type Error = anyhow::Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        Ok(match s.as_str() {
             "deposit" => Self::Deposit,
             "withdrawal" => Self::Withdrawal,
             "dispute" => Self::Dispute,
@@ -23,13 +22,5 @@ impl FromStr for TxType {
             "chargeback" => Self::Chargeback,
             _ => return Err(anyhow::anyhow!("Invalid transaction type: {}", s)),
         })
-    }
-}
-
-impl TryFrom<String> for TxType {
-    type Error = anyhow::Error;
-
-    fn try_from(s: String) -> Result<Self, Self::Error> {
-        Self::from_str(&s)
     }
 }
